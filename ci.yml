@@ -1,0 +1,21 @@
+name: Biotech Simulator Test
+
+on: [push] # This means: Run every time I save/push code
+
+jobs:
+  run-sim:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: pip install boto3 moto
+
+      - name: Run Biotech Simulation
+        run: python biotech_sim.py
