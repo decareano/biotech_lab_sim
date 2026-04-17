@@ -10,7 +10,7 @@ lims_db = {"EXP-402": {"status": "IDLE", "version": 1}}
 def run_biotech_simulation():
     # 1. SETUP S3 (Scenario 26: The Ghost Bucket)
     s3 = boto3.client("s3", region_name="us-east-1")
-    s3.create_bucket(Bucket="pm-analysis-results-2026")
+    # s3.create_bucket(Bucket="pm-analysis-results-2026")
 
     # 2. THE WEBHOOK DATA (This is what Benchling would send)
     benchling_payload = {
