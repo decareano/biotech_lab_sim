@@ -42,10 +42,10 @@ def run_biotech_simulation():
     db_version = lims_db[sample_id]["version"]
 
     if incoming_version != db_version:
-        print(
-            f"❌ CRITICAL ERROR: Version Mismatch! DB is on {db_version}, but scientist sent {incoming_version}"
+        # This automatically triggers an Exit Code 1
+        raise Exception(
+            f"CRITICAL ERROR: Version Mismatch! DB is on {db_version}, but scientist sent {incoming_version}"
         )
-        return  # Stop the script here
     lims_db[sample_id]["status"] = "COMPLETED"
     lims_db[sample_id]["s3_path"] = s3_uri
     lims_db[sample_id]["version"] += 1
