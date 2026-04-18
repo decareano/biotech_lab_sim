@@ -3,7 +3,7 @@ from moto import mock_aws
 import json
 
 # --- THE MOCK LIMS DATABASE ---
-lims_db = {"EXP-402": {"status": "IDLE", "version": 1}}
+lims_db = {"EXP-402": {"status": "IDLE", "version": 2}}
 
 
 @mock_aws
@@ -16,6 +16,7 @@ def run_biotech_simulation():
     benchling_payload = {
         "entity": {
             "id": "EXP-402",
+            "version": 1,  # <--- ADD THIS LINE
             "fields": {"Mass Spec Data": {"value": "m/z: 450, intensity: 1200"}},
         }
     }
@@ -36,6 +37,15 @@ def run_biotech_simulation():
 
     # Updating LIMS (Scenario 30: Optimistic Locking)
     # We find the record and bump the version
+    # ADD THIS TO CATCH THE COLLISION
+    incoming_version = benchling_payload["entity"]["version"]
+    db_version = lims_db[sample_id]["version"]
+
+    if incoming_version != db_version:
+        print(
+            f"❌ CRITICAL ERROR: Version Mismatch! DB is on {db_version}, but scientist sent {incoming_version}"
+        )
+        return  # Stop the script here
     lims_db[sample_id]["status"] = "COMPLETED"
     lims_db[sample_id]["s3_path"] = s3_uri
     lims_db[sample_id]["version"] += 1
