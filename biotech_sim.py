@@ -6,25 +6,29 @@ import json
 lims_db = {"EXP-402": {"status": "IDLE", "version": 1}}
 
 
-def validate_protein_metrics(value):
+def validate_protein_metrics(value_string):
     """
-    Ensures that protein concentration or mass spec intensity is physically valid.
+    Parses the string and validates the numeric intensity.
     """
-    # Simulate extraction of numeric value
     try:
-        # We look for the number in the string (e.g., "1200")
-        # In a real scenario, you'd use Regex here.
-        concentration = float(value)
+        # STEP 1: PARSING (Extract the number after 'intensity: ')
+        # We split the string at 'intensity: ' and take the second part
+        parts = value_string.split("intensity: ")
+        if len(parts) < 2:
+            raise ValueError("Format Error: 'intensity: ' not found in payload.")
 
-        if concentration < 0:
+        intensity = float(parts[1])  # Convert the extracted number
+
+        # STEP 2: VALIDATION (Check the science)
+        if intensity < 0:
             raise ValueError(
-                f"Scientific Impossibility: Value {concentration} cannot be negative."
+                f"SCIENTIFIC IMPOSSIBILITY: Value {intensity} is negative."
             )
 
-        print(f"✅ Data Sanity Check Passed: {concentration} is valid.")
+        print(f"✅ Data Sanity Check Passed: {intensity} is valid.")
 
-    except ValueError as e:
-        # If it fails, raise it so the Robot Scientist (GitHub Actions) sees the Red X
+    except (ValueError, IndexError) as e:
+        # This catches both parsing errors and our scientific logic errors
         raise ValueError(f"❌ DATA QUALITY ALERT: {e}")
 
 
