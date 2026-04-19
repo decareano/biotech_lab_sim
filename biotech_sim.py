@@ -6,6 +6,28 @@ import json
 lims_db = {"EXP-402": {"status": "IDLE", "version": 1}}
 
 
+def validate_protein_metrics(value):
+    """
+    Ensures that protein concentration or mass spec intensity is physically valid.
+    """
+    # Simulate extraction of numeric value
+    try:
+        # We look for the number in the string (e.g., "1200")
+        # In a real scenario, you'd use Regex here.
+        concentration = float(value)
+
+        if concentration < 0:
+            raise ValueError(
+                f"Scientific Impossibility: Value {concentration} cannot be negative."
+            )
+
+        print(f"✅ Data Sanity Check Passed: {concentration} is valid.")
+
+    except ValueError as e:
+        # If it fails, raise it so the Robot Scientist (GitHub Actions) sees the Red X
+        raise ValueError(f"❌ DATA QUALITY ALERT: {e}")
+
+
 @mock_aws
 def run_biotech_simulation():
     # 1. SETUP S3 (Scenario 26: The Ghost Bucket)
@@ -27,6 +49,7 @@ def run_biotech_simulation():
     # Extracting data
     sample_id = benchling_payload["entity"]["id"]
     raw_data = benchling_payload["entity"]["fields"]["Mass Spec Data"]["value"]
+    validate_protein_metrics(raw_data)
     print(f"Step 1: Extracted {sample_id}")
 
     # Uploading to S3
