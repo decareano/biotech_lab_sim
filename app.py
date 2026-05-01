@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 Convertidor CBOT a Pesos Argentinos (Dólar Blue)
-Sin la complejidad del agente - solo conversión directa
 """
 
 from flask import Flask, request, render_template_string
@@ -23,15 +22,6 @@ FACTORES = {
 }
 
 
-def bushels_a_toneladas(bushels: float, grano: str) -> Optional[float]:
-    """Convierte bushels a toneladas métricas"""
-    grano = grano.lower().replace("á", "a")
-    factor = FACTORES.get(grano)
-    if factor:
-        return round(bushels * factor, 2)
-    return None
-
-
 def precio_a_tonelada(precio_por_bushel: float, grano: str) -> Optional[float]:
     """Convierte precio USD/bushel a USD/tonelada"""
     grano = grano.lower().replace("á", "a")
@@ -42,16 +32,12 @@ def precio_a_tonelada(precio_por_bushel: float, grano: str) -> Optional[float]:
 
 
 # ============================================
-# DÓLAR BLUE (simulado - luego conectás API real)
+# DÓLAR BLUE
 # ============================================
 
 
 def obtener_dolar_blue() -> Dict:
-    """
-    Versión simplificada - en producción usar:
-    https://api.bluelytics.com.ar/v2/latest
-    """
-    # Datos actualizados al 1 de mayo 2026
+    """Versión simplificada - reemplazar con API real después"""
     return {"compra": 1380, "venta": 1400, "fecha": "2026-05-01"}
 
 
@@ -61,7 +47,7 @@ def usd_a_ars(precio_usd: float, dolar_blue: Dict) -> float:
 
 
 # ============================================
-# FRONT END (HTML minimalista)
+# FRONT END (Versión corregida)
 # ============================================
 
 HTML = """
@@ -70,11 +56,11 @@ HTML = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CBOT a Pesos 🇦🇷 | Dólar Blue</title>
+    <title>CBOT a Pesos 🇦🇷</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
             display: flex;
@@ -93,9 +79,6 @@ HTML = """
         h1 {
             font-size: 28px;
             margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
         .sub {
             color: #666;
@@ -142,7 +125,6 @@ HTML = """
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
         }
         button:hover { background: #1b5e20; }
         .resultado {
@@ -169,6 +151,12 @@ HTML = """
             border-left-color: #c62828;
             color: #c62828;
         }
+        .debug {
+            background: #fff3e0;
+            border-left-color: #ff9800;
+            font-family: monospace;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -181,8 +169,9 @@ HTML = """
             <span class="dolar-value">${{ dolar_blue.venta }} <small>ARS</small></span>
         </div>
         
+        <!-- IMPORTANTE: method="POST" sin action (envía a la misma URL) -->
         <form method="POST">
-            <input type="number" step="0.01" name="precio" placeholder="Precio en USD / bushel" value="{{ precio_input or '' }}" required>
+            <input type="number" step="any" name="precio" placeholder="Precio en USD / bushel" value="{{ precio_input or '' }}" required>
             <select name="grano">
                 <option value="maiz" {{ 'selected' if grano_selected == 'maiz' else '' }}>🌽 Maíz</option>
                 <option value="trigo" {{ 'selected' if grano_selected == 'trigo' else '' }}>🌾 Trigo</option>
@@ -192,13 +181,20 @@ HTML = """
             <button type="submit">Convertir →</button>
         </form>
         
+        <!-- SECCIÓN DE RESULTADOS -->
         {% if resultado %}
-        <div class="resultado">
-            <p>📊 <strong>{{ grano_nombre }}</strong> ({{ precio_input }} USD/bushel)</p>
-            <p class="usd">🇺🇸 <strong>{{ precio_tn_usd }} USD</strong> / tonelada</p>
-            <p class="ars">🇦🇷 <strong>$ {{ precio_tn_ars }} ARS</strong> / tonelada</p>
-            <p style="font-size: 12px; margin-top: 12px;">💡 Dólar blue: ${{ dolar_blue.venta }} ARS ({{ dolar_blue.fecha }})</p>
-        </div>
+            {% if resultado.error %}
+                <div class="resultado error">
+                    <p>{{ resultado.error }}</p>
+                </div>
+            {% else %}
+                <div class="resultado">
+                    <p>📊 <strong>{{ resultado.grano_nombre }}</strong> ({{ resultado.precio_input }} USD/bushel)</p>
+                    <p class="usd">🇺🇸 <strong>{{ resultado.precio_tn_usd }} USD</strong> / tonelada</p>
+                    <p class="ars">🇦🇷 <strong>$ {{ resultado.precio_tn_ars }} ARS</strong> / tonelada</p>
+                    <p style="font-size: 12px; margin-top: 12px;">💡 Dólar blue: ${{ dolar_blue.venta }} ARS ({{ dolar_blue.fecha }})</p>
+                </div>
+            {% endif %}
         {% endif %}
         
         <div class="footer">
@@ -209,10 +205,6 @@ HTML = """
 </html>
 """
 
-# ============================================
-# RUTAS DE LA APP
-# ============================================
-
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -221,40 +213,57 @@ def index():
     precio_input = ""
     grano_selected = "maiz"
 
+    # Verificar si es una solicitud POST (el usuario envió el formulario)
     if request.method == "POST":
         try:
-            precio = float(request.form.get("precio", 0))
+            # Extraer datos del formulario
+            precio_str = request.form.get("precio", "")
             grano = request.form.get("grano", "maiz")
             grano_selected = grano
 
-            # Mapeo para mostrar nombre lindo
-            nombres = {
-                "maiz": "Maíz",
-                "trigo": "Trigo",
-                "soja": "Soja",
-                "sorgo": "Sorgo",
-            }
-            grano_nombre = nombres.get(grano, grano)
+            print(
+                f"🔍 DEBUG: precio_str = '{precio_str}', grano = '{grano}'"
+            )  # Esto aparece en logs de Render
 
-            # Calcular precio por tonelada en USD
-            precio_tn_usd = precio_a_tonelada(precio, grano)
-
-            if precio_tn_usd:
-                # Convertir a ARS
-                precio_tn_ars = usd_a_ars(precio_tn_usd, dolar)
-                precio_input = f"{precio:.2f}"
-
-                resultado = {
-                    "grano_nombre": grano_nombre,
-                    "precio_tn_usd": f"{precio_tn_usd:,.2f}",
-                    "precio_tn_ars": f"{precio_tn_ars:,.0f}",
-                }
+            if not precio_str:
+                resultado = {"error": "❌ Ingresá un precio válido (ej: 5.50)"}
             else:
-                resultado = {
-                    "error": f"❌ No reconozco '{grano}'. Usá maíz, trigo, soja o sorgo."
+                precio = float(precio_str)
+
+                # Mapeo para mostrar nombre lindo
+                nombres = {
+                    "maiz": "🌽 Maíz",
+                    "trigo": "🌾 Trigo",
+                    "soja": "🫘 Soja",
+                    "sorgo": "🌾 Sorgo",
                 }
-        except:
-            resultado = {"error": "❌ Ingresá un precio válido (ej: 5.50)"}
+                grano_nombre = nombres.get(grano, grano)
+
+                # Calcular precio por tonelada en USD
+                precio_tn_usd = precio_a_tonelada(precio, grano)
+
+                if precio_tn_usd:
+                    # Convertir a ARS
+                    precio_tn_ars = usd_a_ars(precio_tn_usd, dolar)
+
+                    resultado = {
+                        "grano_nombre": grano_nombre,
+                        "precio_input": f"{precio:.2f}",
+                        "precio_tn_usd": f"{precio_tn_usd:,.2f}",
+                        "precio_tn_ars": f"{precio_tn_ars:,.0f}",
+                    }
+                    precio_input = f"{precio:.2f}"
+                else:
+                    resultado = {
+                        "error": f"❌ No reconozco '{grano}'. Usá maíz, trigo, soja o sorgo."
+                    }
+
+        except ValueError as e:
+            print(f"❌ Error de conversión: {e}")
+            resultado = {"error": "❌ Ingresá un número válido (ej: 5.50)"}
+        except Exception as e:
+            print(f"❌ Error inesperado: {e}")
+            resultado = {"error": f"❌ Error: {str(e)}"}
 
     return render_template_string(
         HTML,
