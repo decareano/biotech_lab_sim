@@ -6,6 +6,32 @@ import json
 lims_db = {"EXP-402": {"status": "IDLE", "version": 1}}
 
 
+def validate_protein_metrics(value_string):
+    """
+    Parses the string and validates the numeric intensity.
+    """
+    try:
+        # STEP 1: PARSING (Extract the number after 'intensity: ')
+        # We split the string at 'intensity: ' and take the second part
+        parts = value_string.split("intensity: ")
+        if len(parts) < 2:
+            raise ValueError("Format Error: 'intensity: ' not found in payload.")
+
+        intensity = float(parts[1])  # Convert the extracted number
+
+        # STEP 2: VALIDATION (Check the science)
+        if intensity < 0:
+            raise ValueError(
+                f"SCIENTIFIC IMPOSSIBILITY: Value {intensity} is negative."
+            )
+
+        print(f"✅ Data Sanity Check Passed: {intensity} is valid.")
+
+    except (ValueError, IndexError) as e:
+        # This catches both parsing errors and our scientific logic errors
+        raise ValueError(f"❌ DATA QUALITY ALERT: {e}")
+
+
 @mock_aws
 def run_biotech_simulation():
     # 1. SETUP S3 (Scenario 26: The Ghost Bucket)
@@ -16,7 +42,7 @@ def run_biotech_simulation():
     benchling_payload = {
         "entity": {
             "id": "EXP-402",
-            # "version": 1,  # <--- ADD THIS LINE
+            "version": 1,  # <--- ADD THIS LINE
             "fields": {"Mass Spec Data": {"value": "m/z: 450, intensity: 1200"}},
         }
     }
@@ -27,6 +53,7 @@ def run_biotech_simulation():
     # Extracting data
     sample_id = benchling_payload["entity"]["id"]
     raw_data = benchling_payload["entity"]["fields"]["Mass Spec Data"]["value"]
+    validate_protein_metrics(raw_data)
     print(f"Step 1: Extracted {sample_id}")
 
     # Uploading to S3
