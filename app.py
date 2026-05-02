@@ -63,6 +63,7 @@ def obtener_dolar_blue() -> dict:
 
 def auto_fetch_price():
     """Obtiene el precio de Yahoo Finance (último cierre)"""
+    # this makes it better to obtain previous close. you can still get it manually though
     try:
         ticker = yf.Ticker("ZSN26.F")
         data = ticker.history(period="2d")
