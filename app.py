@@ -242,7 +242,8 @@ HTML = """
         </form>
         
         <div class="resultado">
-            <p><strong>📊 Conversión a tonelada métrica</strong></p>
+            
+            <p><strong>📊 Conversión a tonelada métrica (antes de costos)</strong></p>
             <p class="usd">🇺🇸 <strong>{{ precio_tn_usd }} USD</strong> / tonelada (FOB)</p>
             <p class="ars">🇦🇷 <strong>$ {{ precio_teorico_ars }} ARS</strong> / tonelada (valor exportación)</p>
             
