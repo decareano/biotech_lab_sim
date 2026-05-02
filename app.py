@@ -7,6 +7,7 @@ CON ENTRADA MANUAL DE PRECIO - Sin scraping, sin APIs externas
 from flask import Flask, request, render_template_string, session
 from datetime import datetime
 import os
+import yfinance as yf
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Necesario para session
@@ -255,6 +256,24 @@ def index():
         precio_productor_ars=f"{productor['precio_ars_puerto']:,.0f}",
         dolar_blue_venta=dolar_venta,
     )
+
+
+def get_cbot_price_yahoo():
+    """
+    Fetches CBOT Soybean July 2026 (ZSN26.F) price from Yahoo Finance
+    Returns price as float or None if fails
+    """
+    try:
+        # Ticker format: ZS = Soybeans, N = July, 26 = 2026, .F = Futures
+        ticker = yf.Ticker("ZSN26.F")
+        data = ticker.history(period="1d")
+        if not data.empty:
+            # Last closing price (previous session) is usually what we want
+            price = round(data["Close"].iloc[-1], 2)
+            return price
+    except Exception as e:
+        print(f"Yahoo fetch error: {e}")
+    return None
 
 
 if __name__ == "__main__":
