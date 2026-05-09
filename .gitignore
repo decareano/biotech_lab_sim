@@ -1,0 +1,7 @@
+venv/
+# (Also add these just in case)
+.venv/
+env/
+__pycache__/
+*.pyc
+.vscode/

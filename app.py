@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-Convertidor CBOT a Pesos Argentinos (Dólar Blue)
-CON AUTO-FETCH + ENTRADA MANUAL OPCIONAL
+Convertidor CBOT a Pesos Argentinos + Referencia A3 Rosario (Manual)
 """
 
-from flask import Flask, request, render_template_string, redirect, url_for
+from flask import Flask, request, render_template_string, redirect, url_for, session
 from datetime import datetime
 import os
 import yfinance as yf
@@ -13,316 +12,195 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 # ============================================
-# CONVERSIONES DE GRANOS
+# 1. LOGICA DE CONVERSION (CBOT)
 # ============================================
-
-FACTORES = {
-    "soja": 0.0272155,  # 60 lb/bu
-}
-
-
-def precio_a_tonelada(precio_por_bushel: float) -> float:
-    """Convierte precio USD/bushel a USD/tonelada para soja"""
-    return round(precio_por_bushel / FACTORES["soja"], 2)
+FACTOR_SOJA = 0.0272155  # 60 lb/bu
+RETENCION_SOJA = 0.33
+COSTOS_FIJOS_USD = 25
 
 
-# ============================================
-# COSTOS ARGENTINOS (Soja)
-# ============================================
-
-RETENCION_SOJA = 0.33  # 33%
-COSTOS_FIJOS_USD = 25  # USD/TN (flete + comisiones)
+def precio_a_tonelada(precio_bushel):
+    return round(precio_bushel / FACTOR_SOJA, 2)
 
 
-def precio_argentina(precio_usd_tn: float, dolar_blue: float) -> dict:
-    """Calcula precio real que recibe el productor en Argentina"""
-    valor_post_retencion = precio_usd_tn * (1 - RETENCION_SOJA)
-    valor_en_puerto_usd = valor_post_retencion - COSTOS_FIJOS_USD
-    valor_en_puerto_ars = valor_en_puerto_usd * dolar_blue
+def precio_argentina(precio_usd_tn, dolar_blue_venta):
+    precio_con_retencion = precio_usd_tn * (1 - RETENCION_SOJA)
+    precio_final_usd = precio_con_retencion - COSTOS_FIJOS_USD
+    precio_final_ars = precio_final_usd * dolar_blue_venta
     return {
         "retencion_pct": int(RETENCION_SOJA * 100),
-        "precio_usd_puerto": round(valor_en_puerto_usd, 2),
-        "precio_ars_puerto": round(valor_en_puerto_ars, 0),
+        "precio_usd_puerto": round(precio_final_usd, 2),
+        "precio_ars_puerto": round(precio_final_ars, 0),
     }
 
 
 # ============================================
-# DÓLAR BLUE
+# 2. OBTENCION DE PRECIOS
 # ============================================
-
-
-def obtener_dolar_blue() -> dict:
-    """Dólar blue actual - actualizar manualmente cuando cambie"""
-    return {"compra": 1380, "venta": 1400, "fecha": "2026-05-01"}
-
-
-# ============================================
-# AUTO-FETCH PRICE
-# ============================================
-
-
-def auto_fetch_price():
-    """Obtiene el precio de Yahoo Finance (último cierre)"""
-    # this makes it better to obtain previous close. you can still get it manually though
+def obtener_precio_cbot():
+    """Auto-fetch desde Yahoo Finance (contrato ZSN26)"""
     try:
         ticker = yf.Ticker("ZSN26.F")
-        data = ticker.history(period="2d")
+        data = ticker.history(period="1d")
         if not data.empty:
-            latest_close = data["Close"].iloc[-1]
-            return round(latest_close, 2)
+            return round(data["Close"].iloc[-1], 2)
     except Exception as e:
-        print(f"Auto-fetch error: {e}")
+        print(f"Error fetching CBOT: {e}")
     return None
 
 
-# ============================================
-# FRONT END
-# ============================================
+def obtener_dolar_blue():
+    return {"venta": 1400, "compra": 1380, "fecha": "2026-05-01"}  # Placeholder
 
-HTML = """
+
+# ============================================
+# 3. VARIABLES GLOBALES (Datos)
+# ============================================
+precio_bushel_cbot = 12.00  # Valor inicial por defecto
+precio_tn_a3 = 430000  # <--- PRECIO DE ROSARIO (Actualizar manualmente)
+fecha_actualizacion_cbot = "No actualizado"
+fecha_actualizacion_a3 = "No actualizado"
+
+# ============================================
+# 4. FRONT END (HTML)
+# ============================================
+HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CBOT a Pesos | Soja Argentina</title>
+    <title>Soja: CBOT vs A3 Rosario</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .container {
-            max-width: 600px;
-            width: 100%;
-            background: white;
-            border-radius: 28px;
-            padding: 32px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        h1 { font-size: 28px; margin-bottom: 4px; }
-        .sub { color: #666; font-size: 13px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #eee; }
-        
-        .precio-card {
-            background: #1a1a2e;
-            color: white;
-            border-radius: 20px;
-            padding: 24px;
-            text-align: center;
-            margin-bottom: 24px;
-        }
-        .precio-label { font-size: 13px; opacity: 0.8; margin-bottom: 8px; }
-        .precio-valor { font-size: 48px; font-weight: 800; }
-        .precio-valor small { font-size: 18px; font-weight: normal; }
-        .fecha { font-size: 11px; opacity: 0.7; margin-top: 8px; }
-        
-        .button-group {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 24px;
-        }
-        .btn-auto {
-            flex: 1;
-            padding: 14px;
-            background: #1565C0;
-            color: white;
-            border: none;
-            border-radius: 14px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .btn-auto:hover { background: #0D47A1; }
-        
-        .divider {
-            text-align: center;
-            color: #999;
-            font-size: 12px;
-            margin: 16px 0;
-            position: relative;
-        }
-        .divider::before, .divider::after {
-            content: "";
-            position: absolute;
-            top: 50%;
-            width: 45%;
-            height: 1px;
-            background: #ddd;
-        }
-        .divider::before { left: 0; }
-        .divider::after { right: 0; }
-        
-        .input-group {
-            margin-bottom: 16px;
-        }
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #333;
-            font-size: 14px;
-        }
-        input {
-            width: 100%;
-            padding: 14px 16px;
-            font-size: 16px;
-            border: 1px solid #ddd;
-            border-radius: 14px;
-            font-family: inherit;
-        }
-        .btn-manual {
-            width: 100%;
-            padding: 14px;
-            background: #2e7d32;
-            color: white;
-            border: none;
-            border-radius: 14px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .btn-manual:hover { background: #1b5e20; }
-        
-        .resultado {
-            margin-top: 28px;
-            padding: 20px;
-            background: #e8f5e9;
-            border-radius: 20px;
-            border-left: 5px solid #2e7d32;
-        }
-        .usd { font-size: 20px; font-weight: 700; color: #1a1a2e; }
-        .ars { font-size: 24px; font-weight: 800; color: #2e7d32; }
-        .ars-real { font-size: 28px; font-weight: 800; color: #e65100; }
-        .footer {
-            margin-top: 24px;
-            font-size: 11px;
-            color: #999;
-            text-align: center;
-        }
-        .info {
-            font-size: 12px;
-            color: #666;
-            margin-top: 12px;
-            padding: 10px;
-            background: #f5f5f5;
-            border-radius: 12px;
-        }
+        body { font-family: sans-serif; background: #1a1a2e; display: flex; justify-content: center; padding: 2rem; }
+        .card { max-width: 700px; background: white; border-radius: 2rem; padding: 2rem; box-shadow: 0 20px 35px rgba(0,0,0,0.2); }
+        h1 { margin: 0 0 0.5rem 0; }
+        .precio-box { background: #0f172a; color: white; border-radius: 1.5rem; padding: 1.5rem; text-align: center; margin: 1.5rem 0; }
+        .precio-grande { font-size: 2.5rem; font-weight: bold; }
+        .grid-2 { display: flex; gap: 1.5rem; margin: 1.5rem 0; flex-wrap: wrap; }
+        .referencia { flex: 1; background: #f8fafc; padding: 1rem; border-radius: 1rem; text-align: center; border-left: 5px solid #2e7d32; }
+        .brecha { background: #fff3e0; padding: 1rem; border-radius: 1rem; text-align: center; margin: 1rem 0; }
+        .positivo { color: #15803d; }
+        .negativo { color: #b91c1c; }
+        button { background: #2563eb; color: white; border: none; padding: 0.7rem 1.2rem; border-radius: 2rem; cursor: pointer; margin-top: 1rem; width: 100%; font-weight: bold; }
+        .footer { font-size: 0.7rem; text-align: center; margin-top: 1.5rem; color: #64748b; }
+        .admin-panel { background: #f1f5f9; padding: 1rem; border-radius: 1rem; margin: 1rem 0; font-size: 0.8rem; border: 1px solid #cbd5e1; }
+        input { padding: 0.4rem; border-radius: 0.5rem; border: 1px solid #cbd5e1; width: 120px; }
+        small { color: #475569; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🌽 CBOT → Argentina 🇦🇷</h1>
-        <div class="sub">Soja · Contrato Julio (ZSN26) · Dólar Blue</div>
-        
-        <div class="precio-card">
-            <div class="precio-label">📊 Precio CBOT Soja</div>
-            <div class="precio-valor">${{ precio_bushel }} <small>USD/bushel</small></div>
-            <div class="fecha">Actualizado: {{ fecha_actualizacion }}</div>
+<div class="card">
+    <h1>🌱 Soja Argentina</h1>
+    <p>CBOT Julio (ZSN26) vs A3 Rosario</p>
+
+    <!-- Botón de Auto-Fetch CBOT -->
+    <form method="POST" action="/auto-fetch-cbot">
+        <button type="submit" style="background: #0f172a;">🔍 Actualizar Precio CBOT</button>
+    </form>
+
+    <!-- Panel de Precios -->
+    <div class="precio-box">
+        📊 <strong>Precio CBOT (soja)</strong><br>
+        <span class="precio-grande">USD {{ "%.2f"|format(precio_cbot) }} / bushel</span><br>
+        <small>Actualizado: {{ fecha_cbot }}</small>
+    </div>
+
+    <div class="grid-2">
+        <div class="referencia">
+            <strong>🇺🇸 CBOT (convertido)</strong><br>
+            <span class="precio-grande" style="font-size: 1.8rem;">USD {{ cbot_usd_tn }} / TN</span><br>
+            <span>🇦🇷 $ {{ cbot_ars_tn }} ARS</span>
         </div>
-        
-        <div class="button-group">
-            <form method="POST" action="/auto-fetch" style="flex: 1;">
-                <button type="submit" class="btn-auto">🔍 Obtener último precio</button>
-            </form>
-        </div>
-        
-        <div class="divider">o ingresar manualmente</div>
-        
-        <form method="POST">
-            <div class="input-group">
-                <label>✏️ Ingresar precio manual</label>
-                <input type="number" step="any" name="precio_bushel" placeholder="Ej: 12.00" value="">
-            </div>
-            <button type="submit" name="action" value="manual" class="btn-manual">Actualizar Precio</button>
-        </form>
-        
-        <div class="resultado">
-            
-            <p><strong>📊 Conversión a tonelada métrica (antes de costos)</strong></p>
-            <p class="usd">🇺🇸 <strong>{{ precio_tn_usd }} USD</strong> / tonelada (FOB)</p>
-            <p class="ars">🇦🇷 <strong>$ {{ precio_teorico_ars }} ARS</strong> / tonelada (valor exportación)</p>
-            
-            <hr style="margin: 16px 0; border: none; border-top: 1px dashed #ccc;">
-            
-            <p><strong>🚜 PRECIO ESTIMADO AL PRODUCTOR</strong></p>
-            <p>📉 Retención: {{ retencion_pct }}%</p>
-            <p>🚛 Fletes + comisiones: USD {{ costos_fijos }}/TN</p>
-            <p class="ars-real">🇦🇷 <strong>$ {{ precio_productor_ars }} ARS</strong> / tonelada</p>
-            <p style="font-size: 11px; margin-top: 10px;">(Precio en puerto Rosario)</p>
-        </div>
-        
-        <div class="footer">
-            Dólar blue: ${{ dolar_blue_venta }} ARS · Retención soja 33%
+        <div class="referencia">
+            <strong>🇦🇷 A3 Rosario (Referencia)</strong><br>
+            <span class="precio-grande" style="font-size: 1.8rem;">$ {{ a3_ars_tn }} ARS / TN</span>
         </div>
     </div>
+
+    <!-- Brecha de Precios -->
+    <div class="brecha">
+        <strong>📉 Brecha CBOT vs Precio Local (Rosario)</strong><br>
+        <span class="{% if brecha_ars > 0 %}positivo{% else %}negativo{% endif %}" style="font-weight: bold;">
+            {% if brecha_ars > 0 %}Positiva (+){% else %}Negativa{% endif %} 
+            $ {{ "%0.f"|format(brecha_ars|abs) }} ARS/TN
+        </span><br>
+        <small>El precio local está 
+            {% if brecha_ars > 0 %}por DEBAJO{% else %}por ENCIMA{% endif %} 
+            del valor teórico de exportación.
+        </small>
+    </div>
+
+    <!-- Panel de Configuración (Solo para administradores) -->
+    <div class="admin-panel">
+        <details>
+            <summary>⚙️ Admin: Actualizar precio A3 Rosario</summary>
+            <form method="POST" action="/actualizar-a3" style="margin-top: 1rem;">
+                <label>Precio A3 Soja (ARS/TN): </label>
+                <input type="number" name="precio_a3" value="{{ a3_ars_tn }}" step="1000">
+                <button type="submit" style="display: inline-block; width: auto; margin-top: 0; padding: 0.4rem 1rem;">Guardar</button>
+                <p><small>⚠️ Solo actualizar con el precio de cierre del contrato líder en Rosario</small></p>
+            </form>
+        </details>
+    </div>
+
+    <div class="footer">
+        Dólar Blue: ${{ dolar_blue }} ARS | Contrato CBOT ZSN26 | Retención Soja 33% + Costos Fijos
+    </div>
+</div>
 </body>
 </html>
 """
 
-# ============================================
-# VALORES GLOBALES
-# ============================================
-
-precio_bushel_actual = 12.00
-fecha_actualizacion = datetime.now().strftime("%Y-%m-%d %H:%M")
 
 # ============================================
-# RUTAS DE LA APP
+# 5. RUTAS DE LA APLICACIÓN
 # ============================================
-
-
-@app.route("/auto-fetch", methods=["POST"])
-def auto_fetch():
-    global precio_bushel_actual, fecha_actualizacion
-    fetched_price = auto_fetch_price()
-    if fetched_price:
-        precio_bushel_actual = fetched_price
-        fecha_actualizacion = f"{datetime.now().strftime('%Y-%m-%d %H:%M')} (auto)"
+@app.route("/auto-fetch-cbot", methods=["POST"])
+def auto_fetch_cbot():
+    global precio_bushel_cbot, fecha_actualizacion_cbot
+    precio = obtener_precio_cbot()
+    if precio:
+        precio_bushel_cbot = precio
+        fecha_actualizacion_cbot = datetime.now().strftime("%Y-%m-%d %H:%M")
     return redirect(url_for("index"))
 
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/actualizar-a3", methods=["POST"])
+def actualizar_a3():
+    global precio_tn_a3, fecha_actualizacion_a3
+    try:
+        nuevo_precio = int(request.form.get("precio_a3", 0))
+        if nuevo_precio > 0:
+            precio_tn_a3 = nuevo_precio
+            fecha_actualizacion_a3 = datetime.now().strftime("%Y-%m-%d %H:%M")
+    except:
+        pass
+    return redirect(url_for("index"))
+
+
+@app.route("/", methods=["GET"])
 def index():
-    global precio_bushel_actual, fecha_actualizacion
-
-    if request.method == "POST":
-        action = request.form.get("action")
-
-        if action == "manual":
-            try:
-                nuevo_precio = float(request.form.get("precio_bushel", 0))
-                if nuevo_precio > 0:
-                    precio_bushel_actual = nuevo_precio
-                    fecha_actualizacion = datetime.now().strftime("%Y-%m-%d %H:%M")
-            except ValueError:
-                pass
-
-    # Obtener dólar blue
+    # 1. Obtener valores actuales
+    global precio_bushel_cbot, fecha_actualizacion_cbot, precio_tn_a3, fecha_actualizacion_a3
     dolar = obtener_dolar_blue()
     dolar_venta = dolar["venta"]
 
-    # Calcular conversiones con el precio actual
-    precio_tn_usd = precio_a_tonelada(precio_bushel_actual)
-    precio_teorico_ars = round(precio_tn_usd * dolar_venta, 0)
+    # 2. Calcular conversiones
+    cbot_usd_tn = precio_a_tonelada(precio_bushel_cbot)
+    cbot_ars_tn = cbot_usd_tn * dolar_venta
 
-    # Calcular precio productor Argentina
-    productor = precio_argentina(precio_tn_usd, dolar_venta)
+    # 3. Calcular Brecha (CBOT vs A3)
+    brecha_ars = cbot_ars_tn - precio_tn_a3
 
     return render_template_string(
-        HTML,
-        precio_bushel=f"{precio_bushel_actual:.2f}",
-        fecha_actualizacion=fecha_actualizacion,
-        precio_tn_usd=f"{precio_tn_usd:,.2f}",
-        precio_teorico_ars=f"{precio_teorico_ars:,.0f}",
-        retencion_pct=productor["retencion_pct"],
-        costos_fijos=COSTOS_FIJOS_USD,
-        precio_productor_ars=f"{productor['precio_ars_puerto']:,.0f}",
-        dolar_blue_venta=dolar_venta,
+        HTML_TEMPLATE,
+        precio_cbot=precio_bushel_cbot,
+        fecha_cbot=fecha_actualizacion_cbot,
+        cbot_usd_tn=f"{cbot_usd_tn:,.2f}",
+        cbot_ars_tn=f"{cbot_ars_tn:,.0f}",
+        a3_ars_tn=f"{precio_tn_a3:,}",
+        brecha_ars=brecha_ars,
+        dolar_blue=dolar_venta,
     )
 
 

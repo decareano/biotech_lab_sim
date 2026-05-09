@@ -1,87 +1,22 @@
 import boto3
-from moto import mock_aws
-import json
-
-# --- THE MOCK LIMS DATABASE ---
-lims_db = {"EXP-402": {"status": "IDLE", "version": 1}}
+from botocore.exceptions import ClientError
 
 
-def validate_protein_metrics(value_string):
-    """
-    Parses the string and validates the numeric intensity.
-    """
+def get_aws_secret():
+    client = boto3.client("secretsmanager", region_name="us-east-1")
     try:
-        # STEP 1: PARSING (Extract the number after 'intensity: ')
-        # We split the string at 'intensity: ' and take the second part
-        parts = value_string.split("intensity: ")
-        if len(parts) < 2:
-            raise ValueError("Format Error: 'intensity: ' not found in payload.")
-
-        intensity = float(parts[1])  # Convert the extracted number
-
-        # STEP 2: VALIDATION (Check the science)
-        if intensity < 0:
-            raise ValueError(
-                f"SCIENTIFIC IMPOSSIBILITY: Value {intensity} is negative."
-            )
-
-        print(f"✅ Data Sanity Check Passed: {intensity} is valid.")
-
-    except (ValueError, IndexError) as e:
-        # This catches both parsing errors and our scientific logic errors
-        raise ValueError(f"❌ DATA QUALITY ALERT: {e}")
+        response = client.get_secret_value(SecretId="biotech/lims/api_key")
+        return response["SecretString"]
+    except ClientError as e:
+        print(f"❌ Could not fetch secret: {e}")
+        raise PermissionError("AWS Authentication Failed")
 
 
-@mock_aws
-def run_biotech_simulation():
-    # 1. SETUP S3 (Scenario 26: The Ghost Bucket)
-    s3 = boto3.client("s3", region_name="us-east-1")
-    s3.create_bucket(Bucket="pm-analysis-results-2026")
+def validate_api_access(provided_token):
+    # Fetch the secret we just made with Terraform
+    real_key = get_aws_secret()
 
-    # 2. THE WEBHOOK DATA (This is what Benchling would send)
-    benchling_payload = {
-        "entity": {
-            "id": "EXP-402",
-            "version": 1,  # <--- ADD THIS LINE
-            "fields": {"Mass Spec Data": {"value": "m/z: 450, intensity: 1200"}},
-        }
-    }
+    if provided_token != real_key:
+        raise PermissionError("Security Error: Invalid API key.")
 
-    # 3. THE PROCESSING LOGIC (The "Chinese" instructions translated)
-    print("--- STARTING SIMULATION ---")
-
-    # Extracting data
-    sample_id = benchling_payload["entity"]["id"]
-    raw_data = benchling_payload["entity"]["fields"]["Mass Spec Data"]["value"]
-    validate_protein_metrics(raw_data)
-    print(f"Step 1: Extracted {sample_id}")
-
-    # Uploading to S3
-    s3_key = f"raw_data/{sample_id}.dat"
-    s3.put_object(Bucket="pm-analysis-results-2026", Key=s3_key, Body=raw_data)
-    s3_uri = f"s3://pm-analysis-results-2026/{s3_key}"
-    print(f"Step 2: Saved raw data to {s3_uri}")
-
-    # Updating LIMS (Scenario 30: Optimistic Locking)
-    # We find the record and bump the version
-    # ADD THIS TO CATCH THE COLLISION
-    incoming_version = benchling_payload["entity"]["version"]
-    db_version = lims_db[sample_id]["version"]
-
-    if incoming_version != db_version:
-        # This automatically triggers an Exit Code 1
-        raise Exception(
-            f"CRITICAL ERROR: Version Mismatch! DB is on {db_version}, but scientist sent {incoming_version}"
-        )
-    lims_db[sample_id]["status"] = "COMPLETED"
-    lims_db[sample_id]["s3_path"] = s3_uri
-    lims_db[sample_id]["version"] += 1
-    print(f"Step 3: Updated LIMS Ledger to Version {lims_db[sample_id]['version']}")
-
-    # 4. THE FINAL RESULT
-    print("\n--- FINAL STATE OF LIMS DATABASE ---")
-    print(json.dumps(lims_db, indent=2))
-
-
-if __name__ == "__main__":
-    run_biotech_simulation()
+    print("🔑 AWS Secrets Manager verified access.")
