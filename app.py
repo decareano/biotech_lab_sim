@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convertidor CBOT a Pesos Argentinos + Referencia A3 Rosario
-CON SOPORTE PARA PRECIOS FRACCIONALES DE CME
+CORREGIDO - Error de tipo (string vs number)
 """
 
 from flask import Flask, current_app, render_template_string, request, redirect, url_for
@@ -15,27 +15,23 @@ app.secret_key = os.urandom(24)
 # ============================================
 # INICIALIZAR CONFIGURACIÓN
 # ============================================
-app.config["PRECIO_CBOT"] = 12.0625  # 1206'2 = 12.0625
+app.config["PRECIO_CBOT"] = 12.0625
 app.config["FECHA_CBOT"] = "No actualizado"
 app.config["PRECIO_A3"] = 430000
 app.config["FECHA_A3"] = "No actualizado"
 app.config["DOLAR_BLUE_VENTA"] = 1400
-app.config["DOLAR_BLUE_COMPRA"] = 1380
 app.config["DOLAR_BLUE_FECHA"] = "2026-05-01"
 
 # ============================================
 # CONSTANTES
 # ============================================
-FACTOR_SOJA = 0.0272155  # 60 lb/bu
+FACTOR_SOJA = 0.0272155
 RETENCION_SOJA = 0.33
 COSTOS_FIJOS_USD = 25
 
 
 def convertir_precio_cme_a_decimal(precio_str: str) -> float:
-    """
-    Convierte formato CME '1206'2' a decimal 12.0625
-    También soporta '1206'4', '1206'6', etc.
-    """
+    """Convierte '1206'2' a 12.0625"""
     if not precio_str or "'" not in precio_str:
         return float(precio_str)
 
@@ -43,7 +39,6 @@ def convertir_precio_cme_a_decimal(precio_str: str) -> float:
     dolares_centavos = partes[0]
     fraccion = partes[1] if len(partes) > 1 else "0"
 
-    # Manejar fracciones como "2" o "2/8" (a veces vienen con barra)
     if "/" in fraccion:
         fraccion = fraccion.split("/")[0]
 
@@ -56,12 +51,10 @@ def convertir_precio_cme_a_decimal(precio_str: str) -> float:
     centavos = int(dolares_centavos) % 100
     fraccion_decimal = fraccion_int / 8 * 0.01
 
-    precio_decimal = dolares + (centavos / 100) + fraccion_decimal
-    return round(precio_decimal, 5)
+    return round(dolares + (centavos / 100) + fraccion_decimal, 5)
 
 
 def precio_a_tonelada(precio_bushel: float) -> float:
-    """Convierte precio USD/bushel a USD/tonelada"""
     return round(precio_bushel / FACTOR_SOJA, 2)
 
 
@@ -77,14 +70,11 @@ def precio_argentina(precio_usd_tn: float, dolar_blue_venta: float) -> dict:
 
 
 def auto_fetch_cbot_price() -> float:
-    """Obtiene el precio de Yahoo Finance (ZSN26.F) con mejor precisión"""
     try:
-        # Intentar con el contrato de julio
         ticker = yf.Ticker("ZSN26.F")
         data = ticker.history(period="2d")
         if not data.empty:
-            latest_close = data["Close"].iloc[-1]
-            return round(latest_close, 4)
+            return round(data["Close"].iloc[-1], 4)
     except Exception as e:
         print(f"Auto-fetch error: {e}")
     return None
@@ -99,14 +89,13 @@ def auto_fetch_cbot():
     if precio and precio > 0:
         current_app.config["PRECIO_CBOT"] = precio
         current_app.config["FECHA_CBOT"] = (
-            f"{datetime.now().strftime('%Y-%m-%d %H:%M')} (auto-fetch)"
+            f"{datetime.now().strftime('%Y-%m-%d %H:%M')} (auto)"
         )
     return redirect(url_for("index"))
 
 
 @app.route("/actualizar-cbot-manual", methods=["POST"])
 def actualizar_cbot_manual():
-    """Actualiza CBOT desde entrada manual (formato '1206'2' o decimal)"""
     try:
         precio_input = request.form.get("precio_cbot", "")
         if "'" in precio_input:
@@ -118,7 +107,7 @@ def actualizar_cbot_manual():
             current_app.config["PRECIO_CBOT"] = precio_decimal
             current_app.config["FECHA_CBOT"] = datetime.now().strftime("%Y-%m-%d %H:%M")
     except Exception as e:
-        print(f"Error actualizando CBOT manual: {e}")
+        print(f"Error: {e}")
     return redirect(url_for("index"))
 
 
@@ -148,65 +137,72 @@ def actualizar_dolar():
 
 @app.route("/", methods=["GET"])
 def index():
-    precio_cbot = current_app.config["PRECIO_CBOT"]
-    fecha_cbot = current_app.config["FECHA_CBOT"]
-    precio_a3 = current_app.config["PRECIO_A3"]
-    dolar_blue = current_app.config["DOLAR_BLUE_VENTA"]
+    # Obtener valores como números, no strings
+    precio_cbot = float(current_app.config["PRECIO_CBOT"])
+    precio_a3 = int(current_app.config["PRECIO_A3"])
+    dolar_blue = int(current_app.config["DOLAR_BLUE_VENTA"])
 
+    # Calcular conversiones (todas como números)
     cbot_usd_tn = precio_a_tonelada(precio_cbot)
     cbot_ars_tn = cbot_usd_tn * dolar_blue
     productor = precio_argentina(cbot_usd_tn, dolar_blue)
 
     brecha_ars = cbot_ars_tn - precio_a3
-    brecha_porcentaje = round((brecha_ars / cbot_ars_tn) * 100, 1)
-    brecha_clase = (
-        "positivo" if brecha_ars > 0 else "negativo" if brecha_ars < 0 else "neutral"
+    brecha_porcentaje = (
+        round((brecha_ars / cbot_ars_tn) * 100, 1) if cbot_ars_tn > 0 else 0
     )
-    brecha_texto = (
-        "por DEBAJO"
-        if brecha_ars > 0
-        else "por ENCIMA" if brecha_ars < 0 else "en línea con"
-    )
+    brecha_abs = abs(brecha_ars)
 
-    # Para mostrar el precio con 4 decimales
-    precio_cbot_formateado = (
-        f"{precio_cbot:.4f}".rstrip("0").rstrip(".")
-        if "." in f"{precio_cbot:.4f}"
-        else f"{precio_cbot:.4f}"
-    )
+    if brecha_ars > 0:
+        brecha_signo = "POSITIVA +"
+        brecha_texto = "por DEBAJO"
+        brecha_clase = "positivo"
+    elif brecha_ars < 0:
+        brecha_signo = "NEGATIVA"
+        brecha_texto = "por ENCIMA"
+        brecha_clase = "negativo"
+    else:
+        brecha_signo = ""
+        brecha_texto = "en línea con"
+        brecha_clase = "neutral"
+
+    # Formatear precio CBOT para mostrar
+    precio_cbot_formateado = f"{precio_cbot:.4f}".rstrip("0").rstrip(".")
 
     return render_template_string(
         HTML_TEMPLATE,
         precio_cbot=precio_cbot,
         precio_cbot_formateado=precio_cbot_formateado,
-        fecha_cbot=fecha_cbot,
-        cbot_usd_tn=f"{cbot_usd_tn:,.2f}",
-        cbot_ars_tn=f"{cbot_ars_tn:,.0f}",
+        fecha_cbot=current_app.config["FECHA_CBOT"],
+        cbot_usd_tn=cbot_usd_tn,
+        cbot_ars_tn=cbot_ars_tn,
         precio_a3=precio_a3,
         fecha_a3=current_app.config["FECHA_A3"],
         productor_retencion=productor["retencion_pct"],
         productor_usd=productor["precio_usd_puerto"],
-        productor_ars=f"{productor['precio_ars_puerto']:,.0f}",
-        brecha_ars=f"{brecha_ars:,.0f}",
+        productor_ars=productor["precio_ars_puerto"],
+        brecha_ars=brecha_ars,
+        brecha_abs=brecha_abs,
+        brecha_signo=brecha_signo,
         brecha_porcentaje=brecha_porcentaje,
-        brecha_clase=brecha_clase,
         brecha_texto=brecha_texto,
+        brecha_clase=brecha_clase,
         dolar_blue=dolar_blue,
         dolar_fecha=current_app.config["DOLAR_BLUE_FECHA"],
     )
 
 
 # ============================================
-# HTML TEMPLATE (solo la sección relevante modificada)
+# HTML TEMPLATE
 # ============================================
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Soja: CBOT vs A3 Rosario</title>
     <style>
-        /* (mantener todos los estilos anteriores) */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; padding: 30px 20px; }
         .container { max-width: 750px; margin: 0 auto; background: white; border-radius: 32px; padding: 32px; box-shadow: 0 25px 50px rgba(0,0,0,0.25); }
@@ -214,7 +210,6 @@ HTML_TEMPLATE = """
         .sub { color: #666; font-size: 14px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #e9ecef; }
         .button-group { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
         .btn-primary { flex: 1; padding: 12px; background: #0f172a; color: white; border: none; border-radius: 40px; font-weight: 600; cursor: pointer; }
-        .btn-secondary { flex: 1; padding: 12px; background: #2e7d32; color: white; border: none; border-radius: 40px; font-weight: 600; cursor: pointer; }
         .precio-card { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; border-radius: 24px; padding: 24px; text-align: center; margin-bottom: 24px; }
         .precio-label { font-size: 13px; opacity: 0.8; }
         .precio-valor { font-size: 48px; font-weight: 800; margin: 8px 0; }
@@ -258,32 +253,31 @@ HTML_TEMPLATE = """
     <div class="grid-2">
         <div class="referencia-card">
             <div>🇺🇸 CBOT convertido</div>
-            <div class="referencia-precio">USD {{ cbot_usd_tn }} <small>/TN</small></div>
-            <div style="font-size:12px">🇦🇷 $ {{ cbot_ars_tn }} ARS</div>
+            <div class="referencia-precio">USD {{ "{:,.2f}".format(cbot_usd_tn) }} <small>/TN</small></div>
+            <div style="font-size:12px">🇦🇷 $ {{ "{:,.0f}".format(cbot_ars_tn) }} ARS</div>
         </div>
         <div class="referencia-card" style="border-left-color:#e65100">
             <div>🇦🇷 A3 Rosario</div>
-            <div class="referencia-precio">$ {{ "{:,.0f}".format(precio_a3|float) }} <small>ARS/TN</small></div>
+            <div class="referencia-precio">$ {{ "{:,.0f}".format(precio_a3) }} <small>ARS/TN</small></div>
         </div>
     </div>
     
     <div class="brecha-card">
         <div style="font-weight:600">📉 BRECHA CBOT vs PRECIO LOCAL</div>
         <div class="brecha-numero {{ brecha_clase }}">
-            {% if brecha_ars|float > 0 %}POSITIVA +{% elif brecha_ars|float < 0 %}NEGATIVA{% endif %} 
-            $ {{ brecha_ars|abs|float|round|int }} ARS/TN
+            {{ brecha_signo }} $ {{ "{:,.0f}".format(brecha_abs) }} ARS/TN
         </div>
         <div>El precio local está <strong>{{ brecha_texto }}</strong> del valor teórico</div>
-        <div style="font-size:13px">({{ brecha_porcentaje|abs }}% por {{ brecha_texto }})</div>
+        <div style="font-size:13px">({{ "%.1f"|format(brecha_porcentaje) }}% por {{ brecha_texto }})</div>
     </div>
     
     <div class="detalle-card">
-        <div class="detalle-item"><span>📊 Precio CBOT (USD/TN FOB)</span><strong>USD {{ cbot_usd_tn }}</strong></div>
-        <div class="detalle-item"><span>📉 Retenciones ({{ productor_retencion }}%)</span><strong class="negativo">-USD {{ "%.2f"|format(cbot_usd_tn|float * 0.33) }}</strong></div>
+        <div class="detalle-item"><span>📊 Precio CBOT (USD/TN FOB)</span><strong>USD {{ "{:,.2f}".format(cbot_usd_tn) }}</strong></div>
+        <div class="detalle-item"><span>📉 Retenciones ({{ productor_retencion }}%)</span><strong class="negativo">-USD {{ "{:,.2f}".format(cbot_usd_tn * 0.33) }}</strong></div>
         <div class="detalle-item"><span>🚛 Fletes + comisiones</span><strong class="negativo">-USD 25.00</strong></div>
-        <div class="detalle-item" style="border-top:2px solid #cbd5e1;margin-top:8px;padding-top:12px"><span>🚜 Precio al productor (USD)</span><strong>USD {{ "%.2f"|format(productor_usd) }}</strong></div>
+        <div class="detalle-item" style="border-top:2px solid #cbd5e1;margin-top:8px;padding-top:12px"><span>🚜 Precio al productor (USD)</span><strong>USD {{ "{:,.2f}".format(productor_usd) }}</strong></div>
         <div class="detalle-item"><span>🇦🇷 Dólar Blue</span><strong>$ {{ dolar_blue }} ARS</strong></div>
-        <div class="detalle-item" style="background:#e8f5e9;border-radius:12px"><span>💰 Precio al productor (ARS)</span><strong class="positivo" style="font-size:18px">$ {{ productor_ars }} ARS/TN</strong></div>
+        <div class="detalle-item" style="background:#e8f5e9;border-radius:12px"><span>💰 Precio al productor (ARS)</span><strong class="positivo" style="font-size:18px">$ {{ "{:,.0f}".format(productor_ars) }} ARS/TN</strong></div>
     </div>
     
     <div class="admin-panel">
