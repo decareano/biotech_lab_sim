@@ -1,4 +1,7 @@
-flask
-requests
-gunicorn
-yfinance
+boto3==1.43.5
+botocore==1.43.5
+jmespath==1.1.0
+python-dateutil==2.9.0.post0
+s3transfer==0.17.0
+six==1.17.0
+urllib3==2.6.3
