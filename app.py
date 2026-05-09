@@ -171,7 +171,7 @@ def index():
     brecha_a3_blue = cbot_ars_tn_blue - precio_a3
     brecha_a3_bna = cbot_ars_tn_bna - precio_a3
 
-    brecha_porcentaje_blue = (
+    brecha_porcentaje = (
         round((brecha_a3_blue / cbot_ars_tn_blue) * 100, 1)
         if cbot_ars_tn_blue > 0
         else 0
