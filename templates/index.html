@@ -177,7 +177,9 @@
   <body>
     <div class="container">
       <h1>🌱 Soja Argentina</h1>
-      <div class="sub">CBOT Julio (ZSN26) vs A3 Rosario · Dólar Blue</div>
+      <div class="sub">
+        CBOT Julio (ZSN26) vs A3 Rosario · Dólar Blue · Dólar BNA
+      </div>
 
       <div class="button-group">
         <form method="POST" action="/auto-fetch-cbot" style="flex: 1">
@@ -197,30 +199,47 @@
 
       <div class="grid-2">
         <div class="referencia-card">
-          <div>🇺🇸 CBOT convertido</div>
+          <div>🇺🇸 CBOT convertido (USD/TN)</div>
           <div class="referencia-precio">
             USD {{ "{:,.2f}".format(cbot_usd_tn) }} <small>/TN</small>
           </div>
-          <div style="font-size: 12px">
-            🇦🇷 $ {{ "{:,.0f}".format(cbot_ars_tn) }} ARS
+        </div>
+        <div class="referencia-card">
+          <div>🇦🇷 CBOT → ARS (Dólar Blue)</div>
+          <div class="referencia-precio">
+            $ {{ "{:,.0f}".format(cbot_ars_tn_blue) }} <small>ARS/TN</small>
           </div>
+          <div style="font-size: 12px">Dólar Blue: ${{ dolar_blue }}</div>
         </div>
         <div class="referencia-card" style="border-left-color: #e65100">
-          <div>🇦🇷 A3 Rosario</div>
+          <div>🇦🇷 CBOT → ARS (Dólar BNA)</div>
           <div class="referencia-precio">
-            $ {{ "{:,.0f}".format(precio_a3) }} <small>ARS/TN</small>
+            $ {{ "{:,.0f}".format(cbot_ars_tn_bna) }} <small>ARS/TN</small>
+          </div>
+          <div style="font-size: 12px">
+            Dólar BNA Comprador: ${{ dolar_bna }}
           </div>
         </div>
       </div>
 
+      <div class="grid-2">
+        <div class="referencia-card" style="border-left-color: #e65100">
+          <div>🇦🇷 A3 Rosario (Pizarra)</div>
+          <div class="referencia-precio">
+            $ {{ "{:,.0f}".format(precio_a3) }} <small>ARS/TN</small>
+          </div>
+          <div class="fecha">Actualizado: {{ fecha_a3 }}</div>
+        </div>
+      </div>
+
       <div class="brecha-card">
-        <div style="font-weight: 600">📉 BRECHA CBOT vs PRECIO LOCAL</div>
+        <div style="font-weight: 600">📉 BRECHA CBOT (Blue) vs PRECIO A3</div>
         <div class="brecha-numero {{ brecha_clase }}">
           {{ brecha_signo }} $ {{ "{:,.0f}".format(brecha_abs) }} ARS/TN
         </div>
         <div>
-          El precio local está <strong>{{ brecha_texto }}</strong> del valor
-          teórico
+          El precio A3 está <strong>{{ brecha_texto }}</strong> del valor
+          teórico CBOT
         </div>
         <div style="font-size: 13px">
           ({{ "%.1f"|format(brecha_porcentaje) }}% por {{ brecha_texto }})
@@ -302,22 +321,44 @@
 
           <div style="margin-top: 15px">
             <strong>💵 Actualizar Dólar Blue (ARS)</strong>
-            <form method="POST" action="/actualizar-dolar" class="admin-input">
+            <form
+              method="POST"
+              action="/actualizar-dolar-blue"
+              class="admin-input"
+            >
               <input
                 type="number"
                 name="dolar_blue"
                 value="{{ dolar_blue }}"
                 step="10"
               />
-              <button type="submit">Guardar Dólar</button>
+              <button type="submit">Guardar Dólar Blue</button>
+            </form>
+          </div>
+
+          <div style="margin-top: 15px">
+            <strong>🏦 Actualizar Dólar BNA Comprador (ARS)</strong>
+            <form
+              method="POST"
+              action="/actualizar-dolar-bna"
+              class="admin-input"
+            >
+              <input
+                type="number"
+                name="dolar_bna"
+                value="{{ dolar_bna }}"
+                step="10"
+              />
+              <button type="submit">Guardar Dólar BNA</button>
             </form>
           </div>
         </details>
       </div>
 
       <div class="footer">
-        Dólar blue: ${{ dolar_blue }} ARS · Contrato CBOT ZSN26 · Retención soja
-        33% · Costos USD 25/TN
+        Dólar Blue: ${{ dolar_blue }} ARS | Dólar BNA Comprador: ${{ dolar_bna
+        }} ARS<br />
+        Contrato CBOT ZSN26 · Retención soja 33% · Costos USD 25/TN
       </div>
     </div>
   </body>
