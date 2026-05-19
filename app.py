@@ -70,15 +70,23 @@ def precio_argentina(precio_usd_tn: float, dolar_bna: float) -> dict:
     }
 
 
-def auto_fetch_cbot_price() -> float:
+def auto_fetch_cbot_price():
     try:
-        ticker = yf.Ticker("ZSN26.F")
+        ticker = yf.Ticker("ZS=F")
         data = ticker.history(period="2d")
-        if not data.empty:
-            return round(data["Close"].iloc[-1], 4)
+        if data is None or data.empty:
+            print("Auto-fetch: no hay datos")
+            return None
+        latest_close = data["Close"].iloc[-1]
+        if not isinstance(latest_close, (int, float)):
+            print("Auto-fetch: latest_close no es un numero")
+            return None
+        print(f"Auto-fetch exitoso: {round(latest_close, 4)}")
+        return round(latest_close, 4)
+
     except Exception as e:
-        print(f"Auto-fetch error: {e}")
-    return None
+        print(f"auto-fetch error: {e}")
+        return None
 
 
 # ============================================
