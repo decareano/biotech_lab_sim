@@ -72,7 +72,7 @@ def precio_argentina(precio_usd_tn: float, dolar_bna: float) -> dict:
 
 def auto_fetch_cbot_price():
     try:
-        ticker = yf.Ticker("ZS=F")
+        ticker = yf.Ticker("ZSN26")
         data = ticker.history(period="2d")
         if data is None or data.empty:
             print("Auto-fetch: no hay datos")
