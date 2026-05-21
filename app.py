@@ -79,12 +79,13 @@ def auto_fetch_cbot_price():
         if data is None or data.empty:
             print("Auto-fetch: no hay datos")
             return None
-        latest_close = data["Close"].iloc[-1]
-        if not isinstance(latest_close, (int, float)):
+        latest_close_cents = data["Close"].iloc[-1]
+        latest_close_dollars = latest_close_cents / 100
+        if not isinstance(latest_close_dollars, (int, float)):
             print("Auto-fetch: latest_close no es un numero")
             return None
-        print(f"Auto-fetch exitoso: {round(latest_close, 4)}")
-        return round(latest_close, 4)
+        print(f"Auto-fetch exitoso: {round(latest_close_dollars, 4)}")
+        return round(latest_close_dollars, 4)
 
     except Exception as e:
         print(f"auto-fetch error: {e}")
