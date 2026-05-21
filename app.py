@@ -15,7 +15,7 @@ app.secret_key = os.urandom(24)
 # ============================================
 # INICIALIZAR CONFIGURACIÓN (valores manuales)
 # ============================================
-app.config["PRECIO_CBOT"] = 12.0625  # Contrato ZSN6
+app.config["PRECIO_CBOT"] = 12.0625  # Contrato "ZSN26.F"
 app.config["FECHA_CBOT"] = "No actualizado"
 app.config["PRECIO_A3"] = 439800  # Pizarra Rosario
 app.config["FECHA_A3"] = "2026-05-08"
@@ -72,7 +72,7 @@ def precio_argentina(precio_usd_tn: float, dolar_bna: float) -> dict:
 
 def auto_fetch_cbot_price():
     try:
-        ticker = yf.Ticker("ZSN6")
+        ticker = yf.Ticker("ZSN26.F")
         data = ticker.history(period="2d")
         if data is None or data.empty:
             print("Auto-fetch: no hay datos")
