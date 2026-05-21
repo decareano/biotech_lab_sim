@@ -8,6 +8,7 @@ from flask import Flask, current_app, render_template, request, redirect, url_fo
 from datetime import datetime
 import os
 import yfinance as yf
+from curl_cffi import requests
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -72,7 +73,8 @@ def precio_argentina(precio_usd_tn: float, dolar_bna: float) -> dict:
 
 def auto_fetch_cbot_price():
     try:
-        ticker = yf.Ticker("ZSN26.F")
+        session = requests.Session(impersonate="safari15_5")
+        ticker = yf.Ticker("ZSN26.F", session=session)
         data = ticker.history(period="2d")
         if data is None or data.empty:
             print("Auto-fetch: no hay datos")
