@@ -74,7 +74,7 @@ def precio_argentina(precio_usd_tn: float, dolar_bna: float) -> dict:
 def auto_fetch_cbot_price():
     try:
         session = requests.Session(impersonate="safari15_5")
-        ticker = yf.Ticker("ZSN26.F", session=session)
+        ticker = yf.Ticker("ZSN26.CBT", session=session)
         data = ticker.history(period="2d")
         if data is None or data.empty:
             print("Auto-fetch: no hay datos")
