@@ -8,7 +8,7 @@ from flask import Flask, current_app, render_template, request, redirect, url_fo
 from datetime import datetime
 import os
 import yfinance as yf
-from curl_cffi import requests
+from curl_cffi import requests as cffi_requests
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -73,7 +73,7 @@ def precio_argentina(precio_usd_tn: float, dolar_bna: float) -> dict:
 
 def auto_fetch_cbot_price():
     try:
-        session = requests.Session(impersonate="safari15_5")
+        session = cffi_requests.Session(impersonate="safari15_5")
         ticker = yf.Ticker("ZSN26.CBT", session=session)
         data = ticker.history(period="2d")
         if data is None or data.empty:
@@ -96,7 +96,7 @@ def auto_fetch_cbot_price():
 
 def auto_fetch_bna_price() -> int | None:
     try:
-        url = "https://dolarapi.com/v1/dolares/banco-nacion"
+        url = "https://dolarapi.com/v1/dolares/oficial"
         session = cffi_requests.Session(impersonate="safari15_5")
         response = session.get(url)
         if response.status_code != 200:
