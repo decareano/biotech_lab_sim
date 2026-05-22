@@ -97,7 +97,8 @@ def auto_fetch_cbot_price():
 def auto_fetch_bna_price() -> int | None:
     try:
         url = "https://dolarapi.com/v1/dolares/banco-nacion"
-        response = requests.get(url)
+        session = cffi_requests.Session(impersonate="safari15_5")
+        response = session.get(url)
         if response.status_code != 200:
             print("request failed")
             return None
