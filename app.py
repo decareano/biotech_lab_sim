@@ -79,8 +79,10 @@ def auto_fetch_cbot_price():
         if data is None or data.empty:
             print("Auto-fetch: no hay datos")
             return None
+
         latest_close_cents = data["Close"].iloc[-1]
         latest_close_dollars = latest_close_cents / 100
+
         if not isinstance(latest_close_dollars, (int, float)):
             print("Auto-fetch: latest_close no es un numero")
             return None
@@ -89,6 +91,29 @@ def auto_fetch_cbot_price():
 
     except Exception as e:
         print(f"auto-fetch error: {e}")
+        return None
+
+
+def auto_fetch_bna_price() -> int | None:
+    try:
+        url = "https://dolarapi.com/v1/dolares/banco-nacion"
+        response = requests.get(url)
+        if response.status_code != 200:
+            print("request failed")
+            return None
+        data = response.json()
+        valor_raw = data.get("compra")
+        if valor_raw is None:
+            print("bna: clave compra no se encontró")
+            return None
+        valor_float = float(valor_raw)
+        valor_int = int(valor_float)
+        if valor_int <= 0:
+            print("bna: valor invalido")
+            return None
+        return valor_int
+    except Exception as e:
+        print(f"bna error: {e}")
         return None
 
 
