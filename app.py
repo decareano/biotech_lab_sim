@@ -174,6 +174,15 @@ def actualizar_dolar_bna():
     return redirect(url_for("index"))
 
 
+@app.route("/auto-fetch-bna", methods=["POST"])
+def auto_fetch_bna():
+    precio = auto_fetch_bna_price()
+    if precio and precio > 0:
+        current_app.config["DOLAR_BNA_COMPRADOR"] = precio
+        current_app.config["FECHA_DOLAR_BNA"] = datetime.now().strftime("%Y-%m-%d")
+    return redirect(url_for("index"))
+
+
 @app.route("/", methods=["GET"])
 def index():
     # Obtener valores como números
