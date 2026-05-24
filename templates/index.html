@@ -227,6 +227,12 @@
             $ {{ "{:,.0f}".format(precio_a3) }} <small>ARS/TN</small>
           </div>
           <div class="fecha">Actualizado: {{ fecha_a3 }}</div>
+          <hr style="margin: 12px 0" />
+          <div>📊 A3 Rofex Jul26 (USD → ARS)</div>
+          <div class="referencia-precio">
+            $ {{ "{:,.0f}".format(a3_ars_desde_usd) if a3_ars_desde_usd else
+            "N/A" }} <small>ARS/TN</small>
+          </div>
         </div>
       </div>
 
