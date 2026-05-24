@@ -212,11 +212,7 @@
             USD {{ "{:,.2f}".format(cbot_usd_tn) }} <small>/TN</small>
           </div>
         </div>
-        <div class="referencia-card">
-          <div>🇦🇷 CBOT → ARS (Dólar BNA)</div>
-          <div class="referencia-precio">
-            $ {{ "{:,.0f}".format(cbot_ars_tn) }} <small>ARS/TN</small>
-          </div>
+        
           <div style="font-size: 12px">
             Dólar BNA Comprador: ${{ dolar_bna }}
           </div>
@@ -237,20 +233,20 @@
       </div>
 
       <div class="brecha-card">
-        <div style="font-weight: 600">
-          📉 BRECHA CBOT (Dólar BNA) vs PRECIO A3
-        </div>
-        <div class="brecha-numero {{ brecha_clase }}">
-          {{ brecha_signo }} $ {{ "{:,.0f}".format(brecha_abs) }} ARS/TN
-        </div>
-        <div>
-          El precio A3 está <strong>{{ brecha_texto }}</strong> del valor
-          teórico CBOT
-        </div>
-        <div style="font-size: 13px">
-          ({{ "%.1f"|format(brecha_porcentaje) }}% por {{ brecha_texto }})
-        </div>
-      </div>
+    <div style="font-weight:600">📉 BRECHA ROFEX vs PIZARRA</div>
+    <div class="brecha-numero">
+        {% if brecha_rofex_pizarra is not none %}
+            {% if brecha_rofex_pizarra > 0 %}
+                POSITIVA + $ {{ "{:,.0f}".format(brecha_rofex_pizarra) }} ARS/TN
+            {% else %}
+                NEGATIVA $ {{ "{:,.0f}".format(brecha_rofex_pizarra|abs) }} ARS/TN
+            {% endif %}
+        {% else %}
+            No disponible
+        {% endif %}
+    </div>
+    <div>El pizarra está por {{ "debajo" if brecha_rofex_pizarra > 0 else "encima" if brecha_rofex_pizarra < 0 else "igual" }} del Rofex</div>
+</div>
 
       <div class="detalle-card">
         <div class="detalle-item">

@@ -201,6 +201,11 @@ def index():
         a3_ars_desde_usd = a3_usd * dolar_bna
     else:
         a3_ars_desde_usd = None
+        # Calcular brecha entre Rofex y Pizarra
+    if a3_ars_desde_usd is not None and precio_a3 is not None:
+        brecha_rofex_pizarra = a3_ars_desde_usd - precio_a3
+    else:
+        brecha_rofex_pizarra = None
 
     # Calcular conversiones CBOT
     cbot_usd_tn = precio_a_tonelada(precio_cbot)
@@ -250,6 +255,7 @@ def index():
         dolar_bna=dolar_bna,
         fecha_dolar_bna=current_app.config["FECHA_DOLAR_BNA"],
         a3_ars_desde_usd=a3_ars_desde_usd,
+        brecha_rofex_pizarra=brecha_rofex_pizarra,
     )
 
 
