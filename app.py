@@ -185,10 +185,22 @@ def auto_fetch_bna():
 
 @app.route("/", methods=["GET"])
 def index():
+
     # Obtener valores como números
     precio_cbot = float(current_app.config["PRECIO_CBOT"])
     precio_a3 = int(current_app.config["PRECIO_A3"])
     dolar_bna = int(current_app.config["DOLAR_BNA_COMPRADOR"])
+
+    try:
+        with open("A3_rofexJuly26.txt", "r") as f:
+            a3_usd = float(f.read().strip())
+    except:
+        a3_usd = None
+
+    if a3_usd is not None and a3_usd > 0:
+        a3_ars_desde_usd = a3_usd * dolar_bna
+    else:
+        a3_ars_desde_usd = None
 
     # Calcular conversiones CBOT
     cbot_usd_tn = precio_a_tonelada(precio_cbot)
@@ -237,6 +249,7 @@ def index():
         brecha_clase=brecha_clase,
         dolar_bna=dolar_bna,
         fecha_dolar_bna=current_app.config["FECHA_DOLAR_BNA"],
+        a3_ars_desde_usd=a3_ars_desde_usd,
     )
 
 
