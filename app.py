@@ -27,7 +27,7 @@ app.config["FECHA_DOLAR_BNA"] = "2026-05-08"
 # CONSTANTES
 # ============================================
 FACTOR_SOJA = 0.0272155
-RETENCION_SOJA = 0.33
+RETENCION_SOJA = 0.24
 COSTOS_FIJOS_USD = 25
 
 
