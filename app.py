@@ -183,11 +183,23 @@ def auto_fetch_bna():
     return redirect(url_for("index"))
 
 
+def analizar_tecnico(precio_centavos: float) -> str:
+    soporte = 1176.6
+    resistencia = 1194.4
+    if precio_centavos > resistencia:
+        return "🟢 SEÑAL ALCISTA"
+    elif precio_centavos < soporte:
+        return "🔴 SEÑAL BAJISTA"
+    else:
+        return "🟡 ZONA DE DECISIÓN"
+
+
 @app.route("/", methods=["GET"])
 def index():
 
     # Obtener valores como números
     precio_cbot = float(current_app.config["PRECIO_CBOT"])
+    señal_tecnica = analizar_tecnico(precio_cbot)
     precio_a3 = int(current_app.config["PRECIO_A3"])
     dolar_bna = int(current_app.config["DOLAR_BNA_COMPRADOR"])
 
@@ -256,6 +268,7 @@ def index():
         fecha_dolar_bna=current_app.config["FECHA_DOLAR_BNA"],
         a3_ars_desde_usd=a3_ars_desde_usd,
         brecha_rofex_pizarra=brecha_rofex_pizarra,
+        señal_tecnica=señal_tecnica,
     )
 
 
