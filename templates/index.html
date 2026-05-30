@@ -172,6 +172,13 @@
         font-weight: 600;
         color: #475569;
       }
+      .senal-card {
+        background: #f0f4f8;
+        padding: 12px;
+        border-radius: 16px;
+        text-align: center;
+        margin-bottom: 20px;
+      }
     </style>
   </head>
   <body>
@@ -211,12 +218,11 @@
           <div class="referencia-precio">
             USD {{ "{:,.2f}".format(cbot_usd_tn) }} <small>/TN</small>
           </div>
-        </div>
-        
-          <div style="font-size: 12px">
+          <div style="font-size: 12px; margin-top: 8px">
             Dólar BNA Comprador: ${{ dolar_bna }}
           </div>
         </div>
+
         <div class="referencia-card" style="border-left-color: #e65100">
           <div>🇦🇷 A3 Rosario (Pizarra)</div>
           <div class="referencia-precio">
@@ -232,21 +238,24 @@
         </div>
       </div>
 
+      <!-- 👇 SEÑAL TÉCNICA -->
+      <div class="senal-card">
+        📊 Señal Técnica CBOT: <strong>{{ senal_tecnica }}</strong>
+      </div>
+
       <div class="brecha-card">
-    <div style="font-weight:600">📉 BRECHA ROFEX vs PIZARRA</div>
-    <div class="brecha-numero">
-        {% if brecha_rofex_pizarra is not none %}
-            {% if brecha_rofex_pizarra > 0 %}
-                POSITIVA + $ {{ "{:,.0f}".format(brecha_rofex_pizarra) }} ARS/TN
-            {% else %}
-                NEGATIVA $ {{ "{:,.0f}".format(brecha_rofex_pizarra|abs) }} ARS/TN
-            {% endif %}
-        {% else %}
-            No disponible
-        {% endif %}
-    </div>
-    <div>El pizarra está por {{ "debajo" if brecha_rofex_pizarra > 0 else "encima" if brecha_rofex_pizarra < 0 else "igual" }} del Rofex</div>
-</div>
+        <div style="font-weight: 600">📉 BRECHA ROFEX vs PIZARRA</div>
+        <div class="brecha-numero">
+          {% if brecha_rofex_pizarra is not none %} {% if brecha_rofex_pizarra >
+          0 %} POSITIVA + $ {{ "{:,.0f}".format(brecha_rofex_pizarra) }} ARS/TN
+          {% else %} NEGATIVA $ {{ "{:,.0f}".format(brecha_rofex_pizarra|abs) }}
+          ARS/TN {% endif %} {% else %} No disponible {% endif %}
+        </div>
+        <div>
+          El pizarra está por {{ "debajo" if brecha_rofex_pizarra > 0 else
+          "encima" if brecha_rofex_pizarra < 0 else "igual" }} del Rofex
+        </div>
+      </div>
 
       <div class="detalle-card">
         <div class="detalle-item">
