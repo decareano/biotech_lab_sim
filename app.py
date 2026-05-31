@@ -187,6 +187,7 @@ def analizar_tecnico(precio_centavos: float) -> str:
     soporte = 1176.6
     resistencia = 1194.4
     if precio_centavos > resistencia:
+        print("precio_centavos")
         return "🟢 SEÑAL ALCISTA"
     elif precio_centavos < soporte:
         return "🔴 SEÑAL BAJISTA"
