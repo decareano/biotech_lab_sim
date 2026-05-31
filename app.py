@@ -199,10 +199,8 @@ def index():
 
     # Obtener valores como números
     precio_cbot = float(current_app.config["PRECIO_CBOT"])
-    print(f"Precio CBOT (raw): {precio_cbot}")  # 👈 debe ser ~1192
-
-    senal_tecnica = analizar_tecnico(precio_cbot)
-    print(f"Señal generada: '{senal_tecnica}'")
+    precio_cbot_centavos = precio_cbot * 100
+    senal_tecnica = analizar_tecnico(precio_cbot_centavos)
     precio_a3 = int(current_app.config["PRECIO_A3"])
     dolar_bna = int(current_app.config["DOLAR_BNA_COMPRADOR"])
 
