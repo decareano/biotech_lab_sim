@@ -243,6 +243,47 @@
         📊 Señal Técnica CBOT: <strong>{{ senal_tecnica }}</strong>
       </div>
 
+      <!-- Gráfico CME Soja Julio 2026 -->
+      <div
+        style="
+          margin: 20px 0;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          background: white;
+        "
+      >
+        <div
+          style="
+            padding: 8px 12px;
+            background: #f8fafc;
+            font-size: 13px;
+            font-weight: 600;
+            border-bottom: 1px solid #e2e8f0;
+          "
+        >
+          📈 Gráfico CBOT Soja Julio 2026 (CME)
+        </div>
+        <iframe
+          src="https://www.cmegroup.com/apps/cmegroup/widgets/productLibs/esignal-charts.html?type=p&code=ZS&title=Chart+-+Jul+2026+Soybean&venue=0&monthYear=N6&year=2026&exchangeCode=XCBT&interval=1"
+          style="width: 100%; height: 500px; border: none; display: block"
+        >
+        </iframe>
+        <div
+          style="
+            padding: 6px 12px;
+            background: #f8fafc;
+            font-size: 10px;
+            color: #64748b;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+          "
+        >
+          Fuente: CME Group (eSignal). Las líneas de tendencia se guardan en tu
+          navegador.
+        </div>
+      </div>
+
       <div class="brecha-card">
         <div style="font-weight: 600">📉 BRECHA ROFEX vs PIZARRA</div>
         <div class="brecha-numero">
