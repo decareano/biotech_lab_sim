@@ -194,9 +194,9 @@ def analizar_tecnico(precio_centavos: float) -> str:
         return "🟡 ZONA DE DECISIÓN"
 
 
-@app.route("/tradingview")
-def tradingview():
-    return render_template("tradingview.html")
+@app.route("/tradingView")
+def tradingView():
+    return render_template("tradingView.html")
 
 
 @app.route("/", methods=["GET"])
