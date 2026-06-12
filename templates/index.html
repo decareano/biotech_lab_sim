@@ -50,6 +50,9 @@
         border-radius: 40px;
         font-weight: 600;
         cursor: pointer;
+        text-decoration: none;
+        text-align: center;
+        display: inline-block;
       }
       .precio-card {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -223,6 +226,26 @@
         <div class="fecha">Actualizado: {{ fecha_cbot }}</div>
       </div>
 
+      <!-- Botón CBOT TradingView -->
+      <div class="button-group">
+        <a
+          href="https://www.tradingview.com/chart/?symbol=CME:ZS1!"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn-primary"
+          style="
+            background: #1a1a2e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+          "
+        >
+          📈 Ver CBOT Soja en TradingView
+        </a>
+      </div>
+
+      <!-- Botón ROFEX TradingView -->
       <div class="button-group">
         <a
           href="https://www.tradingview.com/chart/?symbol=MATBAROFEX:SOJ.ROSN2026"
@@ -278,55 +301,9 @@
             border-top: 1px solid #e2e8f0;
           "
         >
-          📊 EMA 20: {{ "%.2f"|format(ema_20) }} USD/bu &nbsp;|&nbsp; SMA 50: {{
-          "%.2f"|format(sma_50) }} USD/bu
+          📊 EMA 20: {{ "%.2f"|format(ema_20 * 36.744) }} USD/TN &nbsp;|&nbsp;
+          SMA 50: {{ "%.2f"|format(sma_50 * 36.744) }} USD/TN
         </div>
-      </div>
-
-      <!-- Enlace al Gráfico de CME (abre en nueva pestaña) -->
-      <div
-        style="
-          margin: 20px 0;
-          border-radius: 16px;
-          overflow: hidden;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-          background: white;
-          transition: transform 0.2s;
-        "
-      >
-        <a
-          href="https://www.cmegroup.com/apps/cmegroup/widgets/productLibs/esignal-charts.html?type=p&code=ZS&title=Chart+-+Jul+2026+Soybean&venue=0&monthYear=N6&year=2026&exchangeCode=XCBT&interval=D&chartType=candle"
-          target="_blank"
-          rel="noopener noreferrer"
-          style="text-decoration: none; color: inherit; display: block"
-        >
-          <div
-            style="
-              padding: 16px;
-              background: #f8fafc;
-              border-bottom: 1px solid #e2e8f0;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-            "
-          >
-            <div>
-              <span style="font-size: 16px; font-weight: 600"
-                >📈 Gráfico CBOT Soja Julio 2026 (CME)</span
-              >
-              <div style="font-size: 12px; color: #64748b; margin-top: 4px">
-                Haz clic para ver el gráfico interactivo en una nueva ventana
-              </div>
-            </div>
-            <span style="font-size: 24px">↗️</span>
-          </div>
-          <div style="background: #f1f5f9; text-align: center; padding: 12px">
-            <span style="font-size: 13px; color: #334155"
-              >🔍 Fuente: CME Group (eSignal) - Herramientas de dibujo
-              disponibles</span
-            >
-          </div>
-        </a>
       </div>
 
       <div class="brecha-card">
@@ -438,7 +415,7 @@
 
       <div class="footer">
         Dólar BNA Comprador: ${{ dolar_bna }} ARS · Contrato CBOT ZSN26 ·
-        Retención soja 33% · Costos USD 25/TN
+        Retención soja 24% · Costos USD 25/TN
       </div>
     </div>
   </body>
