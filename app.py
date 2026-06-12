@@ -118,6 +118,34 @@ def auto_fetch_bna_price() -> int | None:
         return None
 
 
+def obtener_historial_cbot(dias: int) -> list:
+    ticker = yf.Ticker("ZS=F")
+    hist = ticker.history(period=f"{dias+20}d")
+    precios = hist["Close"]
+    precios = precios.tolist()
+    return precios
+
+
+def calcular_medias(precios: list, dias_ema: int = 20, dias_sma: int = 50):
+    if len(precios) < dias_sma:
+        return (None, None)
+
+    # SMA 50 (últimos 50 precios)
+    sma = sum(precios[-dias_sma:]) / dias_sma
+
+    # Valor inicial de la EMA (SMA de los primeros 'dias_ema' precios)
+    ema = sum(precios[:dias_ema]) / dias_ema
+
+    # Factor de suavizado
+    k = 2 / (dias_ema + 1)
+
+    # Actualizar la EMA día por día
+    for precio_actual in precios[dias_ema:]:
+        ema = (precio_actual * k) + (ema * (1 - k))
+
+    return (ema, sma)
+
+
 # ============================================
 # RUTAS
 # ============================================
@@ -209,6 +237,17 @@ def index():
     precio_a3 = int(current_app.config["PRECIO_A3"])
     dolar_bna = int(current_app.config["DOLAR_BNA_COMPRADOR"])
 
+    # 2. Obtener historial de precios
+    historial = obtener_historial_cbot(100)
+
+    # 3. Calcular medias
+    ema_20, sma_50 = calcular_medias(historial)
+
+    # 4. Validar por si falla
+    if ema_20 is None:
+        ema_20 = 0
+        sma_50 = 0
+
     try:
         with open("A3_rofexJuly26.txt", "r") as f:
             a3_usd = float(f.read().strip())
@@ -275,6 +314,8 @@ def index():
         a3_ars_desde_usd=a3_ars_desde_usd,
         brecha_rofex_pizarra=brecha_rofex_pizarra,
         senal_tecnica=senal_tecnica,
+        ema_20=ema_20,
+        sma_50=sma_50,
     )
 
 
