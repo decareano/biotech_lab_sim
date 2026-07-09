@@ -18,7 +18,7 @@ app.secret_key = os.urandom(24)
 # ============================================
 app.config["PRECIO_CBOT"] = 12.0625  # Contrato "ZSX26.F"
 app.config["FECHA_CBOT"] = "No actualizado"
-app.config["PRECIO_A3"] = 439800  # Pizarra Rosario
+app.config["PRECIO_A3"] = 482000  # Pizarra Rosario
 app.config["FECHA_A3"] = "2026-05-08"
 app.config["DOLAR_BNA_COMPRADOR"] = 1384  # Dólar BNA comprador (exportadores)
 app.config["FECHA_DOLAR_BNA"] = "2026-05-08"
@@ -249,7 +249,7 @@ def index():
         sma_50 = 0
 
     try:
-        with open("A3_rofexJuly26.txt", "r") as f:
+        with open("A3_rofexNov26X.txt", "r") as f:
             a3_usd = float(f.read().strip())
     except:
         a3_usd = None
