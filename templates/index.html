@@ -299,8 +299,9 @@
             border-top: 1px solid #e2e8f0;
           "
         >
-          📊 EMA 20: {{ "%.2f"|format(ema_20 * 36.744) }} USD/TN &nbsp;|&nbsp;
-          SMA 50: {{ "%.2f"|format(sma_50 * 36.744) }} USD/TN
+          📊 EMA 9: {{ "%.2f"|format((ema_9 / 100) * 36.744) }} USD/TN
+          &nbsp;|&nbsp; EMA 26: {{ "%.2f"|format((ema_26 / 100) * 36.744) }}
+          USD/TN
         </div>
       </div>
 

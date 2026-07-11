@@ -126,24 +126,23 @@ def obtener_historial_cbot(dias: int) -> list:
     return precios
 
 
-def calcular_medias(precios: list, dias_ema: int = 20, dias_sma: int = 50):
-    if len(precios) < dias_sma:
+def calcular_medias(precios: list, dias_ema1: int = 9, dias_ema2: int = 26):
+    if len(precios) < dias_ema2:
         return (None, None)
 
-    # SMA 50 (últimos 50 precios)
-    sma = sum(precios[-dias_sma:]) / dias_sma
+    # Valor inicial de la EMA 9 y EMA 26 (SMA de los primeros N precios)
+    ema1 = sum(precios[:dias_ema1]) / dias_ema1
+    ema2 = sum(precios[:dias_ema2]) / dias_ema2
 
-    # Valor inicial de la EMA (SMA de los primeros 'dias_ema' precios)
-    ema = sum(precios[:dias_ema]) / dias_ema
+    k1 = 2 / (dias_ema1 + 1)
+    k2 = 2 / (dias_ema2 + 1)
 
-    # Factor de suavizado
-    k = 2 / (dias_ema + 1)
+    # Iterar sobre todos los precios desde el día 'dias_ema2' hasta el final
+    for precio_actual in precios[dias_ema2:]:
+        ema1 = (precio_actual * k1) + (ema1 * (1 - k1))
+        ema2 = (precio_actual * k2) + (ema2 * (1 - k2))
 
-    # Actualizar la EMA día por día
-    for precio_actual in precios[dias_ema:]:
-        ema = (precio_actual * k) + (ema * (1 - k))
-
-    return (ema, sma)
+    return (ema1, ema2)
 
 
 # ============================================
@@ -240,13 +239,18 @@ def index():
     # 2. Obtener historial de precios
     historial = obtener_historial_cbot(100)
 
-    # 3. Calcular medias
-    ema_20, sma_50 = calcular_medias(historial)
+    ema_9, ema_26 = calcular_medias(historial)
+    if ema_9 is None:
+        ema_9 = 0
+    ema_26 = 0
 
-    # 4. Validar por si falla
-    if ema_20 is None:
-        ema_20 = 0
-        sma_50 = 0
+    # 👇 ACÁ VA EL CÓDIGO DE LA SEÑAL DE CRUCE
+    if ema_9 > ema_26:
+        cruce_signal = "🟢 CRUCE ALCISTA (EMA 9 > EMA 26)"
+    elif ema_9 < ema_26:
+        cruce_signal = "🔴 CRUCE BAJISTA (EMA 9 < EMA 26)"
+    else:
+        cruce_signal = "⚪ SIN CRUCE"
 
     try:
         with open("A3_rofexNov26X.txt", "r") as f:
@@ -314,8 +318,9 @@ def index():
         a3_ars_desde_usd=a3_ars_desde_usd,
         brecha_rofex_pizarra=brecha_rofex_pizarra,
         senal_tecnica=senal_tecnica,
-        ema_20=ema_20,
-        sma_50=sma_50,
+        cruce_signal=cruce_signal,
+        ema_9=ema_9,
+        ema_26=ema_26,
     )
 
 
