@@ -238,6 +238,7 @@ def index():
 
     # 2. Obtener historial de precios
     historial = obtener_historial_cbot(200)
+    print(f"📊 Historial: {len(historial)} precios")  # 👈 Agregá esto
 
     ema_9, ema_26 = calcular_medias(historial)
     if ema_9 is None:
