@@ -237,7 +237,7 @@ def index():
     dolar_bna = int(current_app.config["DOLAR_BNA_COMPRADOR"])
 
     # 2. Obtener historial de precios
-    historial = obtener_historial_cbot(100)
+    historial = obtener_historial_cbot(200)
 
     ema_9, ema_26 = calcular_medias(historial)
     if ema_9 is None:
