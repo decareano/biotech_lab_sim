@@ -246,7 +246,8 @@ def index():
     ema_9, ema_26 = calcular_medias(historial)
     if ema_9 is None:
         ema_9 = 0
-    ema_26 = 0
+    if ema_26 is None:
+        ema_26 = 0
 
     # 👇 ACÁ VA EL CÓDIGO DE LA SEÑAL DE CRUCE
     if ema_9 > ema_26:
