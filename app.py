@@ -8,6 +8,7 @@ from flask import Flask, current_app, render_template, request, redirect, url_fo
 from datetime import datetime
 import os
 import yfinance as yf
+import requests
 from curl_cffi import requests as cffi_requests
 
 app = Flask(__name__)
@@ -145,6 +146,38 @@ def calcular_medias(precios: list, dias_ema1: int = 9, dias_ema2: int = 26):
     return (ema1, ema2)
 
 
+def obtener_precio_pizarra() -> float | None:
+    """
+    Obtiene el precio de la pizarra de soja en Rosario usando la API de Retriever.
+    Retorna el precio como float, o None si falla.
+    """
+    try:
+        # ⚠️ Reemplazá esta URL con la URL real de tu tarea en Retriever
+        url = "https://matbarofex.primary.ventures/security/rx_DDA_SOJ_ROS_P_DISPO"
+        response = requests.get(url)
+
+        if response.status_code != 200:
+            print(f"Error al obtener pizarra: {response.status_code}")
+            return None
+
+        data = response.json()
+        precio_bruto = data.get("Value")  # Usá la clave que Retriever devuelve
+
+        if not precio_bruto:
+            print("No se encontró el precio en la respuesta")
+            return None
+
+        # Limpiar el string (eliminar puntos) y convertir a float
+        precio = float(precio_bruto.replace(".", ""))
+
+        print(f"Precio pizarra obtenido: {precio}")
+        return precio
+
+    except Exception as e:
+        print(f"Error en obtener_precio_pizarra: {e}")
+        return None
+
+
 # ============================================
 # RUTAS
 # ============================================
@@ -210,6 +243,19 @@ def auto_fetch_bna():
     return redirect(url_for("index"))
 
 
+@app.route("/auto-fetch-pizarra", methods=["POST"])
+def auto_fetch_pizarra():
+    try:
+        precio = obtener_precio_pizarra()
+        if precio is not None and precio > 0:
+            current_app.config["PRECIO_A3"] = precio
+            current_app.config["FECHA_A3"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+    except Exception as e:
+        print(f"Error en auto_fetch_pizarra: {e}")
+
+    return redirect(url_for("index"))
+
+
 def analizar_tecnico(precio_centavos: float) -> str:
     soporte = 1176.6
     resistencia = 1194.4
@@ -235,6 +281,12 @@ def index():
     senal_tecnica = analizar_tecnico(precio_cbot_centavos)
     precio_a3 = int(current_app.config["PRECIO_A3"])
     dolar_bna = int(current_app.config["DOLAR_BNA_COMPRADOR"])
+
+    precio_automatico = obtener_precio_pizarra()
+    if precio_automatico is not None and precio_automatico > 0:
+        current_app.config["PRECIO_A3"] = precio_automatico
+        current_app.config["FECHA_A3"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        precio_a3 = precio_automatico
 
     # 2. Obtener historial de precios
     historial = obtener_historial_cbot(200)
