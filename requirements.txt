@@ -9,3 +9,4 @@ gunicorn
 flask
 yfinance
 curl_cffi
+beautifulsoup4

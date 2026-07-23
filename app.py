@@ -10,6 +10,7 @@ import os
 import yfinance as yf
 import requests
 from curl_cffi import requests as cffi_requests
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -147,12 +148,7 @@ def calcular_medias(precios: list, dias_ema1: int = 9, dias_ema2: int = 26):
 
 
 def obtener_precio_pizarra() -> float | None:
-    """
-    Obtiene el precio de la pizarra de soja en Rosario usando la API de Retriever.
-    Retorna el precio como float, o None si falla.
-    """
     try:
-        # ⚠️ Reemplazá esta URL con la URL real de tu tarea en Retriever
         url = "https://matbarofex.primary.ventures/security/rx_DDA_SOJ_ROS_P_DISPO"
         response = requests.get(url)
 
@@ -160,15 +156,15 @@ def obtener_precio_pizarra() -> float | None:
             print(f"Error al obtener pizarra: {response.status_code}")
             return None
 
-        data = response.json()
-        precio_bruto = data.get("Value")  # Usá la clave que Retriever devuelve
+        soup = BeautifulSoup(response.text, "html.parser")
+        precio_elemento = soup.find("div", class_="PriceCell-content")
 
-        if not precio_bruto:
-            print("No se encontró el precio en la respuesta")
+        if not precio_elemento:
+            print("No se encontró el elemento con el precio")
             return None
 
-        # Limpiar el string (eliminar puntos) y convertir a float
-        precio = float(precio_bruto.replace(".", ""))
+        precio_texto = precio_elemento.text.strip()  # "510.000"
+        precio = float(precio_texto.replace(".", ""))  # 510000.0
 
         print(f"Precio pizarra obtenido: {precio}")
         return precio
