@@ -154,7 +154,7 @@ def obtener_precio_pizarra() -> float | None:
 
         # Después de response = requests.get(url)
         print(f"HTML length: {len(response.text)}")
-        print(response.text[:1000])  # primeros 1000 caracteres
+        print(response.text[:5000])  # primeros 1000 caracteres
 
         if response.status_code != 200:
             print(f"Error al obtener pizarra: {response.status_code}")
